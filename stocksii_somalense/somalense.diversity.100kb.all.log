@@ -1,0 +1,13 @@
+
+VCFtools - 0.1.14
+(C) Adam Auton and Anthony Marcketta 2009
+
+Parameters as interpreted:
+	--vcf somalense.SNPs.filtered.recode.vcf
+	--out somalense.diversity.100kb.all
+	--window-pi 100000
+
+After filtering, kept 1 out of 1 Individuals
+Outputting Windowed Nucleotide Diversity Statistics...
+After filtering, kept 39722522 out of a possible 39722522 Sites
+Run Time = 138.00 seconds
