@@ -285,6 +285,7 @@ samtools index $DIR/1-hisat/$genome/merged.bam
 
 * Braker
 
+
 #+BEGIN_SRC sh :tangle 2-braker/setup.sh
 cd $DIR
 ROOT=$(git rev-parse --show-toplevel)
@@ -506,7 +507,7 @@ mikado pick --json-conf $DIR/2-mikado/$genome/config.yaml \
 #+END_SRC
 
 * Maker
-
+** Iter 1
 #+BEGIN_SRC sh :var genomes=genomes :tangle 3-maker/setup.sh
 cd $DIR/
 ROOT=$(git rev-parse --show-toplevel)
@@ -634,9 +635,102 @@ fasta_merge -d  $DIR/3-maker/$genome/master_datastore_index.log -o $DIR/3-maker/
 
 #+RESULTS:
 
+** Iter 2
+
+#+BEGIN_SRC sh :tangle 5-maker/iter.1/snap.sh
+
+cat $DIR/3-maker/$genome.gff3 | maker2zff -c 0 -e 0 -o 0 -x 0.5 -l 50 /dev/stdin
+mv genome.ann all.ann
+
+sed -n 's/>//p' genome.dna |
+			samtools faidx $ROOT/${genomes[$genome]} > all.dna
+
+fathom all.ann all.dna -gene-stats
+fathom all.ann all.dna -validate
+fathom all.ann all.dna -categorize 1000
+mv uni.ann cat.ann && mv uni.dna cat.dna
+
+fathom cat.ann cat.dna -export 1000 -plus
+mv export.ann export.dna params/
+
+pushd params/
+forge export.ann export.dna > ../forge.log
+popd
+
+hmm-assembler.pl snap params
+#+END_SRC
+
+#+BEGIN_SRC sh :tangle 5-maker/iter.1/autoAug.sh :var genomes=genomes
+
+$DIR/Augustus/scripts/autoAug.pl --species=autoaug \
+					--genome=$ROOT/${genomes[$genome]} \
+					--trainingset=$DIR/3-maker/$genome.gff3 \
+					-v -v -v --useexisting \
+					--cpus=24 \
+					--singleCPU
+
+#+END_SRC
+
+#+BEGIN_SRC sh :var genomes=genomes :tangle 5-maker/setup.sh
+cd $DIR/
+ROOT=$(git rev-parse --show-toplevel)
+
+ml singularity
+maker () { singularity exec -B$ROOT $DIR/apps/maker-2.31.10.sif maker "$@"; }
+
+AUGUSTUS_CONFIG_PATH=$DIR/5-maker/iter.1/config
+
+
+declare -A maker_opts
+maker_opts["genome"]=$ROOT/${genomes[$genome]}
+maker_opts["altest"]=$DIR/0-ref/evidence/gossypium.ests.fa
+maker_opts["protein"]=$DIR/0-ref/evidence/Gohir.Gorai.uniport.fa
+
+maker_opts["model_org"]=""
+maker_opts["repeat_protein"]=""
+maker_opts["rm_gff"]=$DIR/1-RepeatMasker/$genome.rm.gff
+maker_opts["snaphmm"]=$DIR/5-maker/iter.1/snap/${name}.hmm                     #SNAP HMM file
+maker_opts["gmhmm"]=$DIR/2-braker/braker/$genome/GeneMark-ET/output/gmhmm.mod
+maker_opts["augustus_species"]=autoAug                          #Augustus gene prediction species model
+maker_opts["pred_gff"]=$DIR/2-mikado/$genome/mikado.loci.gff3   #ab-initio predictions from an external GFF3 file
+
+maker_opts["alt_splice"]=1                                      #find alternative splicing
+maker_opts["always_complete"]=1                                 #force start and stop codons
+
+maker_opts["clean_try"]=1                                       #remove all data from previous run before retrying
+maker_opts["clean_up"]=1                                        #removes theVoid directory
+
+
+declare -A maker_exe
+maker_exe["probuild"]=$DIR/apps/gm_et_linux_64/probuild
+maker_exe["gmhmme3"]=$DIR/apps/gm_et_linux_64/gmhmme3
+
+#HACK: Add augustus path to end of augustus_species because maker's augustus run
+#      does not respect the AUGUSTUS_CONFIG_PATH env variable
+maker_opts["augustus_species"]+=" --AUGUSTUS_CONFIG_PATH=$AUGUSTUS_CONFIG_PATH"
+
+mkdir $DIR/3-maker/$genome
+cd $DIR/3-maker/$genome
+maker -CTL
+
+for key in "${!maker_opts[@]}"; do
+    value=${maker_opts[$key]}
+    sed --follow-symlinks -i "s#^\($key *=\).*#\1$value#" maker_opts.ctl
+done
+
+for key in "${!maker_exe[@]}"; do
+    value=${maker_exe[$key]}
+    sed --follow-symlinks -i "s#^\($key *=\).*#\1$value#" maker_exe.ctl
+done
+
+
+#+END_SRC
+
+
+
 * BUSCO
-#+BEGIN_SRC sh :tangle 4-busco/run.sh
-cd $DIR/4-busco
+#+BEGIN_SRC sh :tangle 6-busco/run.sh
+cd $DIR/6-busco
 ROOT=$(git rev-parse --show-toplevel)
 
 ml singularity
@@ -644,11 +738,86 @@ ml singularity
 export AUGUSTUS_CONFIG_PATH=$DIR/2-braker/config
 
 singularity exec -B$ROOT $DIR/apps/busco_v4.0.5_cv1.sif busco \
-             -i $DIR/3-maker/$genome.all.maker.transcripts.fasta \
+             -i $DIR/5-maker/iter.1/all.transcripts.fasta \
              -l eudicots_odb10 \
              -m transcriptome \
              -c $SLURM_NPROCS \
              -o $genome.transcriptome \
              --offline
+
+#+END_SRC
+
+* Filter
+#+BEGIN_SRC sh :tangle 7-filter/run.sh
+
+#-- Fix error in quality_filter script
+# If an exon belongs to more than one isform and one of those isoforms are
+# filtered, then there's a chance that the filtering script leaves a dangling
+# comma at the end of the Parent attribute field.
+quality_filter -a 35 $DIR/5-maker/iter.1/all.gff3 |
+		sed 's/,$$/;/' > $DIR/7-filter/all.gff3
+
+gffread-0.12.3 $DIR/7-filter/all.gff3 \
+		-g $ROOT/${genomes[$genome]} \
+		-w 7-filter/all.transcripts.fa -y 7-filter/all.proteins.fa
+#+END_SRC
+* IPRScan
+#+BEGIN_SRC sh
+	ml interproscan/5.47-82.0 && \
+	interproscan.sh \
+		-i 7-filter/all.proteins.fa \
+		-f xml,tsv \
+		-pathways \
+		-iprlookup \
+		-goterms \
+		-dp  \
+		-appl 'Pfam, PRINTS, PANTHER, TIGRFAM, SUPERFAMILY, PIRSF, ProSiteProfiles, ProSitePatterns, SMART' \
+		-b 8-iprscan/all
+#+END_SRC
+* BLAST
+
+#+BEGIN_SRC sh
+	blastp  -query 7-filter/all.proteins.fa \
+			-db $UNIPROT \
+			-outfmt 6 \
+			-out 9-blast/all.tsv
+#+END_SRC
+* Final
+#+BEGIN_SRC sh
+### Split gff file base on contig
+	sort -k1,1V -k4,5n 7-filter/all.gff3 \
+	| awk '!/^#/{ _[$$1]++; print > "10-rename/split/" $$1 }'
+
+
+for file in 10-rename/split/*; do
+    name=$(basename $file)
+	maker_map_ids --prefix "Gosto.${file}G" \
+					--iterate 1 \
+					--justify 4 \
+					--suffix '-' \
+					$< \
+	| sed 's/\(Gusto.'$name'G[0-9]\{4\}\)/\100/' > $file.map 
+
+### Collect contigs maps
+cat 10-rename/split/*.map > all.map
+
+### Add uniprot functions
+maker_functional_fasta $UNIPROT 9-blast/all.tsv 7-filter/all.transcripts.fa > all.transcripts.function.fa
+maker_functional_fasta $UNIPROT 9-blast/all.tsv 7-filter/all.proteins.fa > all.transcripts.proteins.fa
+maker_functional_gff $UNIPROT 9-blast/all.tsv 7-filter/all.gff3 > 10-rename/all.function.gff3
+
+### Add iprscan data to gff file
+ipr_update_gff all.function.gff3 8-iprscan/all.tsv > all.func-domain.gff3
+
+### Rename gff ids
+#### FIXME: destructive inplace command
+map_gff_ids all.map all.func-domain.gff3
+mv all.func-domain.gff3 Gosto.gff3
+### Rename fasta ids
+#### FIXME: destructive inplace command
+map_fasta_ids all.map all.proteins.functions.fa
+map_fasta_ids all.map all.transcripts.functions.fa
+mv all.transcripts.functions.fa Gosto.transcripts.fa
+mv all.proteins.functions.fa Gosto.proteins.fa
 
 #+END_SRC
