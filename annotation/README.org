@@ -1,0 +1,654 @@
+#+TITLE: Annotation
+#+PROPERTY:  header-args :var DIR=(file-name-directory buffer-file-name)
+
+
+
+* Reference Data
+** Genomes
+#+NAME: genomes
+| Name | Fasta File                     |
+|------+--------------------------------|
+| E    | stocksii.V1.0.hic_juiced.fasta |
+
+#+BEGIN_SRC sh :var genomes=genomes :tangle 0-ref/genomes/split.sh
+cd $DIR
+ROOT=$(git rev-parse --show-toplevel)
+
+for genome in "${!genomes[@]}"; do
+    csplit --prefix "$DIR/0-ref/genomes/$genome" \
+           --suffix-format ".%d.fa" \
+           $ROOT/${genomes[$genome]} \
+           /^\>/ {*}
+done
+#+END_SRC
+
+** RNA-Seq
+
+#+NAME: sra
+| Accession   |
+|-------------|
+| SRR617075   |
+| SRR617073   |
+| SRR617068   |
+| SRR617067   |
+| SRR959508   |
+| SRR2132267  |
+| SRR959585   |
+| SRR10675236 |
+| SRR10675235 |
+| SRR10675234 |
+| SRR10675237 |
+| SRR1174182  |
+| SRR1174179  |
+| SRR6327757  |
+| SRR6327758  |
+| SRR6327759  |
+| SRR617009   |
+| SRR617011   |
+| SRR617013   |
+| SRR8267554  |
+| SRR8267566  |
+| SRR8878565  |
+| SRR8878526  |
+| SRR8878661  |
+| SRR8878800  |
+| SRR8878534  |
+| SRR8878745  |
+| SRR8267623  |
+| SRR8267616  |
+| SRR8267619  |
+| SRR8267606  |
+| SRR8267582  |
+| SRR8267601  |
+
+#+BEGIN_SRC sh :var sra=sra :tangle 0-ref/RNA-seq/sra.sh
+cd $DIR
+ROOT=$(git rev-parse --show-toplevel)
+
+cd $DIR/RNA-seq
+
+for acc in "${sra[@]}"; do
+  #addr = ftp://ftp.sra.ebi.ac.uk/vol1/fastq/<dir1>[/<dir2>]/<run accession>
+  addr="ftp://ftp.sra.ebi.ac.uk/vol1/fastq/"
+
+  #<dir1> is the first 6 letters and numbers of the run accession ( e.g. ERR000 for ERR000916 ),
+  dir1="${acc:0:6}"
+
+  dir2=""
+  #If the run accession has seven digits then the <dir2> is 00 + the last digit of the run accession. For example, fastq files for run SRR1016916 are in directory: ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR101/006/SRR1016916/.
+  #If the run accession has eight digits then the <dir2> is 0 + the last two digits of the run accession.
+  #If the run accession has nine digits then the <dir2> is the last three digits of the run accession.
+  if [ ${#acc} -gt 9 ]; then
+    tmp="000${acc:9}"
+    dir2=${tmp:(-3)}
+  fi
+
+  wget -r "$addr/$dir1/$dir2/$acc" \
+       --no-directories -nv --continue \
+       -P $DIR/0-ref/RNA-seq/
+
+done
+
+#+END_SRC
+
+
+
+#+NAME: libs
+| Accessoin   | Forward               | Reverse               |
+|-------------+-----------------------+-----------------------|
+| SRR617075   | SRR617075.fastq.gz    |                       |
+| SRR617073   | SRR617073.fastq.gz    |                       |
+| SRR617068   | SRR617068.fastq.gz    |                       |
+| SRR617067   | SRR617067.fastq.gz    |                       |
+| SRR959508   | SRR959508_1.fastq.gz  | SRR959508_2.fastq.gz  |
+| SRR2132267  | SRR2132267_1.fastq.gz | SRR2132267_2.fastq.gz |
+| SRR959585   | SRR959585_1.fastq.gz  | SRR959585_2.fastq.gz  |
+| SRR10675236 | SRR10675236.fastq.gz  |                       |
+| SRR10675235 | SRR10675235.fastq.gz  |                       |
+| SRR10675234 | SRR10675234.fastq.gz  |                       |
+| SRR10675237 | SRR10675237.fastq.gz  |                       |
+| SRR1174182  | SRR1174182.fastq.gz   |                       |
+| SRR1174179  | SRR1174179.fastq.gz   |                       |
+| SRR6327757  | SRR6327757_1.fastq.gz | SRR6327757_2.fastq.gz |
+| SRR6327758  | SRR6327758_1.fastq.gz | SRR6327758_2.fastq.gz |
+| SRR6327759  | SRR6327759_1.fastq.gz | SRR6327759_2.fastq.gz |
+| SRR617009   | SRR617009.fastq.gz    |                       |
+| SRR617011   | SRR617011.fastq.gz    |                       |
+| SRR617013   | SRR617013.fastq.gz    |                       |
+| SRR8267554  | SRR8267554_1.fastq.gz | SRR8267554_2.fastq.gz |
+| SRR8267566  | SRR8267566_1.fastq.gz | SRR8267566_2.fastq.gz |
+| SRR8878565  | SRR8878565_1.fastq.gz | SRR8878565_2.fastq.gz |
+| SRR8878526  | SRR8878526_1.fastq.gz | SRR8878526_2.fastq.gz |
+| SRR8878661  | SRR8878661_1.fastq.gz | SRR8878661_2.fastq.gz |
+| SRR8878800  | SRR8878800_1.fastq.gz | SRR8878800_2.fastq.gz |
+| SRR8878534  | SRR8878534_1.fastq.gz | SRR8878534_2.fastq.gz |
+| SRR8878745  | SRR8878745_1.fastq.gz | SRR8878745_2.fastq.gz |
+| SRR8267623  | SRR8267623_1.fastq.gz | SRR8267623_2.fastq.gz |
+| SRR8267616  | SRR8267616_1.fastq.gz | SRR8267616_2.fastq.gz |
+| SRR8267619  | SRR8267619_1.fastq.gz | SRR8267619_2.fastq.gz |
+| SRR8267606  | SRR8267606_1.fastq.gz | SRR8267606_2.fastq.gz |
+| SRR8267582  | SRR8267582_1.fastq.gz | SRR8267582_2.fastq.gz |
+| SRR8267601  | SRR8267601_1.fastq.gz | SRR8267601_2.fastq.gz |
+
+
+
+
+
+* RepeatMasker
+
+#+Name: masked_genomes
+| Name | Masked Fasta                                         |
+|------+------------------------------------------------------|
+| E    | 1-RepeatMasker/stocksii.V1.0.hic_juiced.fasta.masked |
+
+#+Name: rmout
+| Name | RM out                                            |
+|------+---------------------------------------------------|
+| E    | 1-RepeatMasker/stocksii.V1.0.hic_juiced.fasta.out |
+
+#+BEGIN_SRC sh :var results=rmout :tangle 1-RepeatMasker/gff.sh
+cd $DIR
+ROOT=$(git rev-parse --show-toplevel)
+
+ml singularity
+
+singularity exec -B $ROOT $DIR/apps/repeatmasker-4.0.9.sif \
+    /usr/local/share/RepeatMasker/util/rmOutToGFF3.pl  $DIR/${results[$genome]} |     # create GFF3
+    grep -v -e "Satellite" -e ")n" -e "-rich" | # isolate complex repeats
+    perl -ane '$id;
+          if(!/^\#/){
+                  @F = split(/\t/, $_);
+                  chomp $F[-1];
+                  $id++;
+                  $F[-1] .= "\;ID=$id";
+                  $_ = join("\t", @F)."\n"
+          }
+          print $_' > $DIR/1-RepeatMasker/$genome.rm.gff # reformat to work with MAKER
+#+END_SRC
+
+
+* Hisat
+
+#+BEGIN_SRC sh :var genomes=genomes :tangle 1-hisat/db/make.sh
+cd $DIR
+ROOT=$(git rev-parse --show-toplevel)
+
+PATH=$DIR/apps/hisat2-2.1.0/:$PATH
+
+for name in "${!genomes[@]}"; do
+    hisat2-build $ROOT/${genomes[$name]} $DIR/1-hisat/db/$name
+done
+#+END_SRC
+
+#+HEADER: :prologue #PBS -lwalltime=24:00:00 -t 0-32
+#+BEGIN_SRC sh :var libs=libs :tangle 1-hisat/run.sh
+cd $DIR
+ROOT=$(git rev-parse --show-toplevel)
+
+NAMES=(${!libs[@]})
+acc=${NAMES[$SLURM_ARRAY_TASK_ID]}
+
+readarray -t lib <<<"${libs[$acc]}"
+
+PATH=$DIR/apps/hisat2-2.1.0/:$PATH
+PATH=/apps/contrib/maa146/samtools-v1.10/bin/:$PATH
+
+mkdir -p $DIR/1-hisat/$genome
+
+if [ -z ${lib[1]} ]; then
+    hisat2 -p $SLURM_CPUS_ON_NODE \
+           -x $DIR/1-hisat/db/${genome} \
+           -U $DIR/0-ref/RNA-seq/${lib[0]} \
+           2>$DIR/1-hisat/$genome/$acc.stats  |
+        samtools view -bS - > $DIR/1-hisat/$genome/$acc.bam
+else
+    hisat2 -p $SLURM_CPUS_ON_NODE  \
+           -x $DIR/1-hisat/db/${genome} \
+           -1 $DIR/0-ref/RNA-seq/${lib[0]} \
+           -2 $DIR/0-ref/RNA-seq/${lib[1]} \
+           2>$DIR/1-hisat/$genome/$acc.stats |
+        samtools view -bS - > $DIR/1-hisat/$genome/$acc.bam
+fi
+
+#+END_SRC
+
+#+BEGIN_SRC sh :results output drawer
+cat << EOF
+| Genome | Library    | Align Rate |
+|--------+------------+------------|
+EOF
+
+grep overall $DIR/1-hisat/*/*.stats | sed "s#$DIR/1-hisat/##" |
+    awk '{sub(".stats", "", $2); print "", $1, $2, $3, ""}' FS="[/: ]" OFS="|"
+#+END_SRC
+#+RESULTS:
+:results:
+#+NAME: alignments
+| Genome | Library     | Align Rate |
+|--------+-------------+------------|
+| E      | SRR8267606  |     77.25% |
+| E      | SRR10675237 |     77.22% |
+| E      | SRR10675236 |     75.72% |
+| E      | SRR10675235 |     75.10% |
+| E      | SRR8878800  |     74.69% |
+| E      | SRR8267554  |     74.08% |
+| E      | SRR6327759  |     73.83% |
+| E      | SRR8878661  |     73.83% |
+| E      | SRR8267616  |     73.31% |
+| E      | SRR8267582  |     73.26% |
+| E      | SRR8878565  |     72.77% |
+| E      | SRR8267623  |     72.18% |
+| E      | SRR8267601  |     70.95% |
+| E      | SRR8267566  |     70.91% |
+| E      | SRR8267619  |     70.84% |
+| E      | SRR8878745  |     70.09% |
+| E      | SRR6327758  |     70.00% |
+
+| E      | SRR8878534  |     69.55% |
+| E      | SRR8878526  |     69.52% |
+| E      | SRR6327757  |     68.90% |
+| E      | SRR2132267  |     66.04% |
+| E      | SRR959585   |     64.30% |
+| E      | SRR617073   |     51.61% |
+| E      | SRR617011   |     51.17% |
+| E      | SRR617075   |     50.78% |
+| E      | SRR959508   |     50.42% |
+| E      | SRR10675234 |     50.26% |
+| E      | SRR617009   |     49.34% |
+| E      | SRR617013   |     49.10% |
+| E      | SRR617068   |     47.94% |
+| E      | SRR617067   |     38.82% |
+| E      | SRR1174179  |     36.16% |
+| E      | SRR1174182  |      0.00% |
+:end:
+
+#+BEGIN_SRC sh :var libs=alignments[,1] :var genomes=genomes[,0] :tangle 1-hisat/merge.sh
+cd $DIR
+ml igbb samtools
+
+PATH=/apps/contrib/maa146/samtools-v1.10/bin/:$PATH
+
+for lib in "${libs[@]}"; do
+     samtools sort -m60G \
+         -T $DIR/1-hisat/$genome/$lib.tmp \
+         -o $DIR/1-hisat/$genome/$lib.sort.bam \
+         $DIR/1-hisat/$genome/$lib.bam
+done
+
+
+samtools merge $DIR/1-hisat/$genome/merged.bam \
+    $(printf " $DIR/1-hisat/$genome/%s.sort.bam" "${libs[@]}")
+samtools index $DIR/1-hisat/$genome/merged.bam
+
+#+END_SRC
+
+
+* Braker
+
+#+BEGIN_SRC sh :tangle 2-braker/setup.sh
+cd $DIR
+ROOT=$(git rev-parse --show-toplevel)
+
+ml singularity
+braker=$DIR/apps/braker.simg
+
+singularity exec -B $ROOT $braker cp -r /augustus/config $DIR/2-braker/
+#+END_SRC
+
+#+RESULTS:
+
+
+#+HEADER: :prologue #PBS -lwalltime=48:00:00
+#+BEGIN_SRC sh :var libs=alignments[,1] :var genomes=masked_genomes :tangle 2-braker/run.sh
+cd $DIR
+ROOT=$(git rev-parse --show-toplevel)
+
+ml singularity
+braker=$DIR/apps/braker.simg
+cd $DIR/2-braker/
+
+singularity exec -B $ROOT $braker braker.pl \
+  --species=$genome \
+  --genome=$DIR/${genomes[$genome]} \
+  --bam=$(printf "$DIR/1-hisat/$genome/%s.sort.bam," "${libs[@]}" | sed -e 's/,$//') \
+  --AUGUSTUS_CONFIG_PATH=$DIR/2-braker/config \
+  --cores=$SLURM_NPROCS
+
+#+END_SRC
+
+* Mikado
+** TODO Trinity
+#+BEGIN_SRC sh :tangle 2-mikado/1-trinity/run.sh
+cd $DIR
+ROOT=$(git rev-parse --show-toplevel)
+
+export TRINITY_HOME=/apps/contrib/maa146/trinityrnaseq-v2.8.6/
+PATH=$TRINITY_HOME:$PATH
+
+PATH=/apps/contrib/maa146/bowtie2-v2.3.5.1/:$PATH
+PATH=/apps/contrib/maa146/jellyfish-v2.3.0/bin:$PATH
+PATH=/apps/contrib/maa146/salmon-v0.14.2/bin:$PATH
+PATH=/apps/contrib/maa146/samtools-v1.10/bin:$PATH
+
+Trinity --genome_guided_bam $DIR/1-hisat/$genome/merged.bam \
+        --genome_guided_max_intron 10000 \
+        --max_memory 100G \
+        --CPU $SLURM_NPROCS \
+        --output "$DIR/2-mikado/1-trinity/$genome-trinity"
+#+END_SRC
+
+#+RESULTS:
+
+#+BEGIN_SRC sh :var genomes=genomes :tangle 2-mikado/1-trinity/gmap.sh
+cd $DIR
+ROOT=$(git rev-parse --show-toplevel)
+
+ml singularity
+gmap_build () { singularity exec -B $ROOT $DIR/apps/gmap_2019.09.12.sif gmap_build "$@"; }
+gmap () { singularity exec -B $ROOT $DIR/apps/gmap_2019.09.12.sif gmap "$@"; }
+
+gmap_build -D $DIR/2-mikado/1-trinity/$genome-trinity \
+    -d $genome.db $ROOT/${genomes[$genome]}
+
+gmap -D $DIR/2-mikado/1-trinity/$genome-trinity \
+     -d $genome.db \
+     -t $SLURM_NPROCS \
+     -f gff3_gene \
+   $DIR/2-mikado/1-trinity/$genome-trinity/Trinity-GG.fasta \
+   > $DIR/2-mikado/1-trinity/$genome.gff
+
+#+END_SRC
+
+** TODO StringTie
+
+#+HEADER: :prologue #PBS -N stringtie -l walltime=48:00:00
+#+BEGIN_SRC sh :var libs=alignments[,1] :tangle 2-mikado/1-stringtie/run.sh
+cd $DIR
+ROOT=$(git rev-parse --show-toplevel)
+
+ml singularity
+
+mkdir $DIR/2-mikado/1-stringtie/$genome
+
+for acc in ${libs[@]}; do
+    srun -n1 --export=ALL \
+        singularity exec -B $DIR $DIR/apps/stringtie_2.1.1.sif \
+          stringtie $DIR/1-hisat/$genome/$acc.sort.bam \
+               -o $DIR/2-mikado/1-stringtie/$genome/$acc.gtf
+done
+wait
+
+singularity exec -B $DIR $DIR/apps/stringtie_2.1.1.sif \
+    stringtie --merge -o $DIR/2-mikado/1-stringtie/$genome.gtf \
+    $(printf "$DIR/2-mikado/1-stringtie/$genome/%s.gtf " "${libs[@]}")
+#+END_SRC
+
+
+** TODO Cufflinks
+#+HEADER: :prologue #PBS -N cufflinks -l walltime=48:00:00
+#+BEGIN_SRC sh :var libs=alignments[,1] :tangle 2-mikado/1-cufflinks/run.sh
+cd $DIR/
+ROOT=$(git rev-parse --show-toplevel)
+
+ml singularity
+
+singularity exec -B $DIR $DIR/apps/cufflinks_2.2.1.sif \
+    cufflinks $(printf "$DIR/1-hisat/$genome/%s.sort.bam " "${libs[@]}") \
+    -p $SLURM_NPROCS \
+    -o $DIR/2-mikado/1-cufflinks/$genome \
+    --no-update-check
+
+
+#+END_SRC
+
+** TODO Portcullis
+#+HEADER: :prologue #PBS -N portcullis -l walltime=48:00:00
+#+BEGIN_SRC sh :var libs=libs[,0] :var genomes=genomes :tangle 2-mikado/1-portcullis/run.sh
+cd $DIR
+ROOT=$(git rev-parse --show-toplevel)
+
+ml singularity
+
+singularity exec -B$ROOT $DIR/apps/portcullis_1.2.2.sif \
+    portcullis full -t $SLURM_NPROCS \
+    --strandedness unstranded \
+    -o $DIR/2-mikado/1-portcullis/$genome \
+    $ROOT/${genomes[$genome]}  \
+    $(printf "$DIR/1-hisat/$genome/%s.sort.bam " "${libs[@]}")
+
+#+END_SRC
+
+** TODO Mikado
+#+HEADER: :prologue #PBS -N mikado -l walltime=48:00:00
+#+BEGIN_SRC sh :var genomes=genomes :tangle 2-mikado/run.sh
+cd $DIR
+ROOT=$(git rev-parse --show-toplevel)
+
+ml singularity
+mikado () { singularity exec -B$ROOT $DIR/apps/mikado_1.2.4.sif mikado "$@"; }
+
+
+mkdir $DIR/2-mikado/$genome
+cd $DIR/2-mikado/$genome
+
+
+cat <<EOF > list.txt
+$DIR/2-mikado/1-cufflinks/$genome/transcripts.gtf	Cufflinks	False
+$DIR/2-mikado/1-stringtie/$genome.gtf	Stringtie	False	1
+$DIR/2-mikado/1-trinity/$genome.gff	Trinity	False	-0.5
+EOF
+
+mikado configure \
+  --reference $ROOT/${genomes[$genome]}\
+  --list list.txt \
+  --scoring plants.yaml \
+  --blast_targets $DIR/0-ref/uniprot_sprot.20200226.fasta  \
+  --junctions $DIR/2-mikado/1-portcullis/$genome/3-filt/portcullis_filtered.pass.junctions.bed \
+  $DIR/2-mikado/$genome/config.yaml
+
+mikado prepare --json-conf config.yaml
+
+#+END_SRC
+
+#+BEGIN_SRC sh :tangle 2-mikado/blast.sh
+cd $DIR
+ROOT=$(git rev-parse --show-toplevel)
+
+cd $DIR/2-mikado/$genome
+
+ml singularity
+
+singularity exec -B $ROOT $DIR/apps/blast_2.9.0.sif \
+  blastx -max_target_seqs 5 -num_threads $SLURM_NPROCS \
+       -query $DIR/2-mikado/$genome/mikado_prepared.fasta \
+       -outfmt 5 \
+       -db $DIR/0-ref/sprot \
+       -evalue 0.000001 2> blast.log | sed '/^$/d' | gzip -c - > mikado.blast.xml.gz
+#+END_SRC
+
+#+HEADER: :prologue #PBS -N transdecoder -l walltime=12:00:00
+#+BEGIN_SRC sh :tangle 2-mikado/transdecoder.sh
+cd $DIR
+ROOT=$(git rev-parse --show-toplevel)
+
+ml singularity
+td () { singularity exec -B $ROOT $DIR/apps/transdecoder_5.5.0.sif "$@"; }
+
+
+cd $DIR/2-mikado/$genome
+
+td TransDecoder.LongOrfs -t $DIR/2-mikado/$genome/mikado_prepared.fasta
+td TransDecoder.Predict  -t $DIR/2-mikado/$genome/mikado_prepared.fasta
+#+END_SRC
+
+#+HEADER: :prologue #PBS -N mikado -l walltime=48:00:00
+#+BEGIN_SRC sh :tangle 2-mikado/subloci.sh
+
+cd $DIR
+ROOT=$(git rev-parse --show-toplevel)
+
+ml singularity
+
+mikado () { singularity exec -B$ROOT $DIR/apps/mikado_1.2.4.sif mikado "$@"; }
+
+cd $DIR/2-mikado/$genome
+
+mikado serialise \
+  --json-conf $DIR/2-mikado/$genome/config.yaml \
+  --xml $DIR/2-mikado/$genome/mikado.blast.xml.gz \
+  --blast_targets $DIR/0-ref/uniprot_sprot.20200226.fasta \
+  --orf $DIR/2-mikado/$genome/mikado_prepared.fasta.transdecoder.bed
+
+mikado pick --json-conf $DIR/2-mikado/$genome/config.yaml \
+            --subloci_out $DIR/2-mikado/$genome/mikado.subloci.gff3
+
+
+#+END_SRC
+
+* Maker
+
+#+BEGIN_SRC sh :var genomes=genomes :tangle 3-maker/setup.sh
+cd $DIR/
+ROOT=$(git rev-parse --show-toplevel)
+
+ml singularity
+maker () { singularity exec -B$ROOT $DIR/apps/maker-2.31.10.sif maker "$@"; }
+
+AUGUSTUS_CONFIG_PATH=$DIR/2-braker/config
+
+
+declare -A maker_opts
+maker_opts["genome"]=$ROOT/${genomes[$genome]}
+maker_opts["altest"]=$DIR/0-ref/evidence/gossypium.ests.fa
+maker_opts["protein"]=$DIR/0-ref/evidence/Gohir.Gorai.uniport.fa
+
+maker_opts["model_org"]=""
+maker_opts["repeat_protein"]=""
+maker_opts["rm_gff"]=$DIR/1-RepeatMasker/$genome.rm.gff
+#maker_opts["snaphmm"]=$DIR/snap/${name}.hmm                     #SNAP HMM file
+maker_opts["gmhmm"]=$DIR/2-braker/braker/$genome/GeneMark-ET/output/gmhmm.mod
+maker_opts["augustus_species"]=$genome                          #Augustus gene prediction species model
+maker_opts["pred_gff"]=$DIR/2-mikado/$genome/mikado.loci.gff3   #ab-initio predictions from an external GFF3 file
+
+maker_opts["alt_splice"]=1                                      #find alternative splicing
+maker_opts["always_complete"]=1                                 #force start and stop codons
+
+maker_opts["clean_try"]=1                                       #remove all data from previous run before retrying
+maker_opts["clean_up"]=1                                        #removes theVoid directory
+
+
+declare -A maker_exe
+maker_exe["probuild"]=$DIR/apps/gm_et_linux_64/probuild
+maker_exe["gmhmme3"]=$DIR/apps/gm_et_linux_64/gmhmme3
+
+#HACK: Add augustus path to end of augustus_species because maker's augustus run
+#      does not respect the AUGUSTUS_CONFIG_PATH env variable
+maker_opts["augustus_species"]+=" --AUGUSTUS_CONFIG_PATH=$AUGUSTUS_CONFIG_PATH"
+
+mkdir $DIR/3-maker/$genome
+cd $DIR/3-maker/$genome
+maker -CTL
+
+for key in "${!maker_opts[@]}"; do
+    value=${maker_opts[$key]}
+    sed --follow-symlinks -i "s#^\($key *=\).*#\1$value#" maker_opts.ctl
+done
+
+for key in "${!maker_exe[@]}"; do
+    value=${maker_exe[$key]}
+    sed --follow-symlinks -i "s#^\($key *=\).*#\1$value#" maker_exe.ctl
+done
+
+
+#+END_SRC
+
+#+HEADER: :prologue #PBS -N maker -l walltime=48:00:00 -t1-13
+#+BEGIN_SRC sh :tangle 3-maker/run.sh
+cd $DIR/
+ROOT=$(git rev-parse --show-toplevel)
+
+ml singularity
+maker () { singularity exec -B$ROOT $DIR/apps/maker-2.31.10.sif maker "$@"; }
+
+cd $DIR/3-maker/$genome/
+mkdir -p $DIR/3-maker/$genome/tmp/$SLURM_ARRAY_TASK_ID
+
+maker -fix_nucleotides \
+      -b $SLURM_ARRAY_TASK_ID \
+      -g "$DIR/0-ref/genomes/$genome.$SLURM_ARRAY_TASK_ID.fa" \
+      -c $SLURM_NPROCS \
+      -TMP $DIR/3-maker/$genome/tmp/$SLURM_ARRAY_TASK_ID/ \
+      --ignore_nfs_tmp \
+      --debug \
+    |& tee ${SLURM_ARRAY_TASK_ID}.log
+
+
+# rm -R $DIR/maker.2/$name/tmp/$PBS_ARRAYID
+# tar -C $DIR/maker.2/$name/ \
+#     -czf $PBS_ARRAYID.tar.gz \
+#     $PBS_ARRAYID.maker.output/${PBS_ARRAYID}_{datastore/,master_datastore_index.log} $PBS_ARRAYID.log
+#+END_SRC
+
+#+BEGIN_SRC sh :tangle maker/progress.sh
+
+progress=$(printf '=%.0s' {1..100})
+
+for i in {1..13}; do
+  complete=0
+
+  if [ -d "$DIR/maker.sing/$i.maker.output"  ]; then
+    log=$(find "$DIR/maker.sing/$i.maker.output/" -name 'run.log')
+    done=$(grep -e 'LOGCHILD' $log | uniq | wc -l )
+    total=$(grep -c -e 'FINISHED.*.pred.raw.section' $log)
+
+    complete=$[ done * 100 / total ]
+  fi
+
+  printf "%2d [%-100s] %d%%\n" $i ${progress:0:$complete} $complete
+
+done
+
+#+END_SRC
+
+#+BEGIN_SRC sh :tangle 3-maker/combine.sh
+cd $DIR/3-maker
+ROOT=$(git rev-parse --show-toplevel)
+
+ml singularity
+gff3_merge () { singularity exec -B$ROOT $DIR/apps/maker-2.31.10.sif gff3_merge "$@"; }
+fasta_merge () { singularity exec -B$ROOT $DIR/apps/maker-2.31.10.sif fasta_merge "$@"; }
+
+mkdir $DIR/3-maker/$genome/all
+
+#Combine the master datastore index files, adding the maker.output directory they come from
+find $DIR/3-maker/$genome/ -maxdepth 2 -name '*_master_datastore_index.log' |
+  xargs awk '{ n=split(FILENAME, dirs, "/"); $2=dirs[n-1] "/" $2; } 1;' OFS="\t" \
+      > $DIR/3-maker/$genome/master_datastore_index.log
+
+gff3_merge -s -n -g -d  $DIR/3-maker/$genome/master_datastore_index.log \
+    > $DIR/3-maker/$genome.gff3
+fasta_merge -d  $DIR/3-maker/$genome/master_datastore_index.log -o $DIR/3-maker/$genome
+
+
+#+END_SRC
+
+#+RESULTS:
+
+* BUSCO
+#+BEGIN_SRC sh :tangle 4-busco/run.sh
+cd $DIR/4-busco
+ROOT=$(git rev-parse --show-toplevel)
+
+ml singularity
+
+export AUGUSTUS_CONFIG_PATH=$DIR/2-braker/config
+
+singularity exec -B$ROOT $DIR/apps/busco_v4.0.5_cv1.sif busco \
+             -i $DIR/3-maker/$genome.all.maker.transcripts.fasta \
+             -l eudicots_odb10 \
+             -m transcriptome \
+             -c $SLURM_NPROCS \
+             -o $genome.transcriptome \
+             --offline
+
+#+END_SRC
